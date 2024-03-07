@@ -19,7 +19,7 @@ def make_label(x):
     elif x >=-0.1 and x < 0.1: return "neutral"
     elif x >= 0.1: return "positive"
 
-def test_fiqa(model, tokenizer, batch_size = 8, prompt_fun = None ):
+def test_fiqa(model, tokenizer, batch_size = 8, prompt_fun = None , processor = process_batch):
     dataset = load_dataset('pauri32/fiqa-2018')
     dataset = datasets.concatenate_datasets([dataset["train"], dataset["validation"] ,dataset["test"] ])
     dataset = dataset.train_test_split(0.226, seed = 42)['test']
@@ -45,7 +45,7 @@ def test_fiqa(model, tokenizer, batch_size = 8, prompt_fun = None ):
 
     for i in tqdm(range(total_steps)):
         tmp_context = context[i* batch_size:(i+1)* batch_size]
-        out_text_list = process_batch(model, tokenizer, tmp_context, out_text_list) 
+        out_text_list = processor(model, tokenizer, tmp_context, out_text_list) 
         # tokens = tokenizer(tmp_context, return_tensors='pt', padding=True, max_length=512)
         # # tokens.pop('token_type_ids')
         # for k in tokens.keys():

@@ -6,14 +6,7 @@ from datasets import load_dataset
 from tqdm import tqdm
 import datasets
 import torch
-
-def format_example(example: dict) -> dict:
-    context = f"Instruction: {example['instruction']}\n"
-    if example.get("input"):
-        context += f"Input: {example['input']}\n"
-    context += "Answer: "
-    target = example["output"]
-    return {"context": context, "target": target}
+from finnlp.benchmarks.utils import format_example, change_target, process_batch
 
 def add_instructions(x):
     if x.format == "post":
@@ -26,15 +19,7 @@ def make_label(x):
     elif x >=-0.1 and x < 0.1: return "neutral"
     elif x >= 0.1: return "positive"
 
-def change_target(x):
-    if 'positive' in x or 'Positive' in x:
-        return 'positive'
-    elif 'negative' in x or 'Negative' in x:
-        return 'negative'
-    else:
-        return 'neutral'
-
-def test_fiqa(model, tokenizer, batch_size = 8, prompt_fun = None ):
+def test_fiqa(model, tokenizer, batch_size = 8, prompt_fun = None, processor = process_batch):
     dataset = load_dataset('pauri32/fiqa-2018')
     dataset = datasets.concatenate_datasets([dataset["train"], dataset["validation"] ,dataset["test"] ])
     dataset = dataset.train_test_split(0.226, seed = 42)['test']
@@ -60,16 +45,7 @@ def test_fiqa(model, tokenizer, batch_size = 8, prompt_fun = None ):
 
     for i in tqdm(range(total_steps)):
         tmp_context = context[i* batch_size:(i+1)* batch_size]
-        tokens = tokenizer(tmp_context, return_tensors='pt', padding=True, max_length=512)
-        # tokens.pop('token_type_ids')
-        for k in tokens.keys():
-            tokens[k] = tokens[k].cuda()
-        
-        res = model.generate(**tokens, max_length=512)
-        res_sentences = [tokenizer.decode(i) for i in res]
-        out_text = [o.split("Answer: ")[1] for o in res_sentences]
-        out_text_list += out_text
-        torch.cuda.empty_cache()
+        out_text_list = processor(model, tokenizer, tmp_context, out_text_list) 
 
     dataset["out_text"] = out_text_list
     dataset["new_target"] = dataset["target"].apply(change_target)

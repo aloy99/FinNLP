@@ -6,6 +6,7 @@ from datasets import load_dataset
 from tqdm import tqdm
 import datasets
 import torch
+from finnlp.benchmarks.utils import format_example, change_target, process_batch
 
 dic = {
     0:"negative",
@@ -13,23 +14,7 @@ dic = {
     2:'neutral',
 }
 
-def format_example(example: dict) -> dict:
-    context = f"Instruction: {example['instruction']}\n"
-    if example.get("input"):
-        context += f"Input: {example['input']}\n"
-    context += "Answer: "
-    target = example["output"]
-    return {"context": context, "target": target}
-
-def change_target(x):
-    if 'positive' in x or 'Positive' in x:
-        return 'positive'
-    elif 'negative' in x or 'Negative' in x:
-        return 'negative'
-    else:
-        return 'neutral'
-
-def test_tfns(model, tokenizer, batch_size = 8, prompt_fun = None ):
+def test_tfns(model, tokenizer, batch_size = 8, prompt_fun = None, processor = process_batch):
     dataset = load_dataset('zeroshot/twitter-financial-news-sentiment')
     dataset = dataset['validation']
     dataset = dataset.to_pandas()
@@ -55,15 +40,7 @@ def test_tfns(model, tokenizer, batch_size = 8, prompt_fun = None ):
     out_text_list = []
     for i in tqdm(range(total_steps)):
         tmp_context = context[i* batch_size:(i+1)* batch_size]
-        tokens = tokenizer(tmp_context, return_tensors='pt', padding=True, max_length=512)
-        # tokens.pop('token_type_ids')
-        for k in tokens.keys():
-            tokens[k] = tokens[k].cuda()
-        res = model.generate(**tokens, max_length=512)
-        res_sentences = [tokenizer.decode(i) for i in res]
-        out_text = [o.split("Answer: ")[1] for o in res_sentences]
-        out_text_list += out_text
-        torch.cuda.empty_cache()
+        out_text_list = processor(model, tokenizer, tmp_context, out_text_list) 
 
     dataset["out_text"] = out_text_list
     dataset["new_target"] = dataset["target"].apply(change_target)
