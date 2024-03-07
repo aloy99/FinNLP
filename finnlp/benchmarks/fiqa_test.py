@@ -44,9 +44,8 @@ def test_fiqa(model, tokenizer, batch_size = 8, prompt_fun = None ):
     out_text_list = []
 
     for i in tqdm(range(total_steps)):
-
-        out_text_list = process_batch(model, tokenizer, tmp_context, out_text_list)
-        # tmp_context = context[i* batch_size:(i+1)* batch_size]
+        tmp_context = context[i* batch_size:(i+1)* batch_size]
+        out_text_list = process_batch(model, tokenizer, tmp_context, out_text_list) 
         # tokens = tokenizer(tmp_context, return_tensors='pt', padding=True, max_length=512)
         # # tokens.pop('token_type_ids')
         # for k in tokens.keys():
