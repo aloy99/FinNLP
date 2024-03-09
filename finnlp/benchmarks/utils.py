@@ -47,7 +47,7 @@ def zeroshot_cot_process_factory(answer_trigger):
 
         res = model.generate(**z2_tokens, max_length=768)
         res_sentences = [tokenizer.decode(i) for i in res]
-        out_text = [o.split("Answer: ")[1] for o in res_sentences]
+        out_text = [o.split(answer_trigger)[1] for o in res_sentences]
         out_text_list += out_text
         torch.cuda.empty_cache()
 
